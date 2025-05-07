@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Periódica Interactiva - SonitaSV 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css"/>
+    <script src="https://unpkg.com/@tailwindcss/browser@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: start;
+            min-height: 100vh;
+        }
+
+        #periodic-table-container {
+            background-color: #2d3748; /* Dark container background */
+            padding: 20px;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            max-width: 1200px;
+            width: 95%;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        #periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(30px, 1fr));
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .element-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #4a5568; /* Dark border */
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+            user-select: none;
+            min-height: 50px;
+            position: relative; /* For absolute positioning of animation container */
+            overflow: hidden; /* Ensure animation doesn't overflow cell */
+        }
+
+        .element-symbol {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #f7fafc; /* Light text */
+        }
+
+        #lanthanides-actinides {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .lanthanide-row, .actinide-row {
+            display: grid;
+            grid-template-columns: repeat(15, minmax(30px, 1fr));
+            gap: 4px;
+            margin-left: calc(3 * (minmax(30px, 1fr) + 4px));
+        }
+
+        .lanthanide-row .element-cell, .actinide-row .element-cell {
+            /* Background will be set by JS based on category */
+            border: 1px solid #4a5568; /* Dark border */
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+            user-select: none;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f7fafc; /* Light text */
+            position: relative;
+            overflow: hidden;
+        }
+
+        #hover-card {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #374151; /* Dark hover card background */
+            padding: 15px;
+            border: 1px solid #6b7280; /* Dark hover card border */
+            border-radius: 0.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            display: none;
+            margin-top: 10px;
+            width: 250px;
+            color: #f7fafc; /* Light text in hover card */
+        }
+
+        #hover-animation-container {
+            width: 80px;
+            height: 80px;
+            margin: 10px auto;
+            border: 1px solid #6b7280;
+            border-radius: 50%;
+            overflow: hidden;
+            background-color: #4a5568;
+        }
+
+        #hover-animation-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 768px) {
+            #periodic-table {
+                grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+            }
+            .element-cell {
+                font-size: 0.6rem;
+                min-height: 40px;
+            }
+            .element-symbol {
+                font-size: 0.8rem;
+            }
+            .lanthanide-row, .actinide-row {
+                grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+                margin-left: 0;
+            }
+            #hover-card {
+                width: 90%;
+                left: 5%;
+                transform: translateX(0);
+            }
+        }
+
+        /* Color coding based on category */
+        .alkali-metal { background-color: #a7f3d0; color: #134e4a; }
+        .alkaline-earth-metal { background-color: #facc15; color: #78350f; }
+        .transition-metal { background-color: #60a5fa; color: #0369a1; }
+        .post-transition-metal { background-color: #a3e635; color: #3f6212; }
+        .metalloid { background-color: #f9a8d4; color: #831843; }
+        .reactive-nonmetal { background-color: #fca5a5; color: #991b1b; }
+        .noble-gas { background-color: #bae6fd; color: #0e7490; }
+        .lanthanide { background-color: #d8b4fe; color: #5b21b6; }
+        .actinide { background-color: #818cf8; color: #4338ca; }
+        .unknown { background-color: #9ca3af; color: #374151; }
+    </style>
+</head>
+<body class="bg-gray-800 p-4">
+    <div id="periodic-table-container" class="rounded-lg shadow-md">
+        <h1 class="text-2xl font-semibold mb-4 text-center text-gray-300">Periódica Interactiva - SonitaSV 2025</h1>
+        <div id="periodic-table">
+            </div>
+        <div id="lanthanides-actinides">
+            <div class="lanthanide-row">
+            </div>
+            <div class="actinide-row">
+            </div>
+        </div>
+        <div id="hover-card" class="text-left">
+            <h2 id="hover-element-name" class="text-xl font-semibold text-gray-300 mb-2">Nombre del Elemento</h2>
+            <p id="hover-element-category" class="text-gray-400"><span class="font-semibold text-gray-300">Categoría:</span> </p>
+            <p id="hover-element-symbol" class="text-gray-400"><span class="font-semibold text-gray-300">Símbolo:</span> </p>
+            <p id="hover-atomic-number" class="text-gray-400"><span class="font-semibold text-gray-300">Número Atómico:</span> </p>
+            <p id="hover-electron-config" class="text-gray-400"><span class="font-semibold text-gray-300">Configuración Electrónica:</span> </p>
+            <div id="hover-animation-container" class="mt-2 flex justify-center items-center">
+                <canvas id="hover-animation-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const periodicTableData = [
+            { number: 1, symbol: 'H', name: 'Hidrógeno', config: '1s1', group: 1, period: 1, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 2, symbol: 'He', name: 'Helio', config: '1s2', group: 18, period: 1, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 3, symbol: 'Li', name: 'Litio', config: '1s2 2s1', group: 1, period: 2, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 4, symbol: 'Be', name: 'Berilio', config: '1s2 2s2', group: 2, period: 2, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 5, symbol: 'B', name: 'Boro', config: '1s2 2s2 2p1', group: 13, period: 2, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 6, symbol: 'C', name: 'Carbono', config: '1s2 2s2 2p2', group: 14, period: 2, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 7, symbol: 'N', name: 'Nitrógeno', config: '1s2 2s2 2p3', group: 15, period: 2, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 8, symbol: 'O', name: 'Oxígeno', config: '1s2 2s2 2p4', group: 16, period: 2, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 9, symbol: 'F', name: 'Flúor', config: '1s2 2s2 2p5', group: 17, period: 2, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 10, symbol: 'Ne', name: 'Neón', config: '1s2 2s2 2p6', group: 18, period: 2, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 11, symbol: 'Na', name: 'Sodio', config: '1s2 2s2 2p6 3s1', group: 1, period: 3, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 12, symbol: 'Mg', name: 'Magnesio', config: '1s2 2s2 2p6 3s2', group: 2, period: 3, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 13, symbol: 'Al', name: 'Aluminio', config: '1s2 2s2 2p6 3s2 3p1', group: 13, period: 3, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 14, symbol: 'Si', name: 'Silicio', config: '1s2 2s2 2p6 3s2 3p2', group: 14, period: 3, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 15, symbol: 'P', name: 'Fósforo', config: '1s2 2s2 2p6 3s2 3p3', group: 15, period: 3, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 16, symbol: 'S', name: 'Azufre', config: '1s2 2s2 2p6 3s2 3p4', group: 16, period: 3, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 17, symbol: 'Cl', name: 'Cloro', config: '1s2 2s2 2p6 3s2 3p5', group: 17, period: 3, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 18, symbol: 'Ar', name: 'Argón', config: '1s2 2s2 2p6 3s2 3p6', group: 18, period: 3, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 19, symbol: 'K', name: 'Potasio', config: '1s2 2s2 2p6 3s2 3p6 4s1', group: 1, period: 4, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 20, symbol: 'Ca', name: 'Calcio', config: '1s2 2s2 2p6 3s2 3p6 4s2', group: 2, period: 4, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 21, symbol: 'Sc', name: 'Escandio', config: '1s2 2s2 2p6 3s2 3p6 3d1 4s2', group: 3, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 22, symbol: 'Ti', name: 'Titanio', config: '1s2 2s2 2p6 3s2 3p6 3d2 4s2', group: 4, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 23, symbol: 'V', name: 'Vanadio', config: '1s2 2s2 2p6 3s2 3p6 3d3 4s2', group: 5, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 24, symbol: 'Cr', name: 'Cromo', config: '1s2 2s2 2p6 3s2 3p6 3d5 4s1', group: 6, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 25, symbol: 'Mn', name: 'Manganeso', config: '1s2 2s2 2p6 3s2 3p6 3d5 4s2', group: 7, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 26, symbol: 'Fe', name: 'Hierro', config: '1s2 2s2 2p6 3s2 3p6 3d6 4s2', group: 8, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 27, symbol: 'Co', name: 'Cobalto', config: '1s2 2s2 2p6 3s2 3p6 3d7 4s2', group: 9, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 28, symbol: 'Ni', name: 'Níquel', config: '1s2 2s2 2p6 3s2 3p6 3d8 4s2', group: 10, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 29, symbol: 'Cu', name: 'Cobre', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s1', group: 11, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 30, symbol: 'Zn', name: 'Zinc', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2', group: 12, period: 4, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 31, symbol: 'Ga', name: 'Galio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p1', group: 13, period: 4, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 32, symbol: 'Ge', name: 'Germanio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p2', group: 14, period: 4, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 33, symbol: 'As', name: 'Arsénico', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p3', group: 15, period: 4, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 34, symbol: 'Se', name: 'Selenio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p4', group: 16, period: 4, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 35, symbol: 'Br', name: 'Bromo', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p5', group: 17, period: 4, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 36, symbol: 'Kr', name: 'Kriptón', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6', group: 18, period: 4, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 37, symbol: 'Rb', name: 'Rubidio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 5s1', group: 1, period: 5, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 38, symbol: 'Sr', name: 'Estroncio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 5s2', group: 2, period: 5, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 39, symbol: 'Y', name: 'Itrio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d1 5s2', group: 3, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 40, symbol: 'Zr', name: 'Zirconio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d2 5s2', group: 4, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 41, symbol: 'Nb', name: 'Niobio', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d4 5s1', group: 5, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 42, symbol: 'Mo', name: 'Molibdeno', config: '1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d5 5s1', group: 6, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 43, symbol: 'Tc', name: 'Tecnecio', config: '[Kr] 4d5 5s2', group: 7, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 44, symbol: 'Ru', name: 'Rutenio', config: '[Kr] 4d7 5s1', group: 8, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 45, symbol: 'Rh', name: 'Rodio', config: '[Kr] 4d8 5s1', group: 9, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 46, symbol: 'Pd', name: 'Paladio', config: '[Kr] 4d10', group: 10, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 47, symbol: 'Ag', name: 'Plata', config: '[Kr] 4d10 5s1', group: 11, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 48, symbol: 'Cd', name: 'Cadmio', config: '[Kr] 4d10 5s2', group: 12, period: 5, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 49, symbol: 'In', name: 'Indio', config: '[Kr] 4d10 5s2 5p1', group: 13, period: 5, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 50, symbol: 'Sn', name: 'Estaño', config: '[Kr] 4d10 5s2 5p2', group: 14, period: 5, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 51, symbol: 'Sb', name: 'Antimonio', config: '[Kr] 4d10 5s2 5p3', group: 15, period: 5, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 52, symbol: 'Te', name: 'Telurio', config: '[Kr] 4d10 5s2 5p4', group: 16, period: 5, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 53, symbol: 'I', name: 'Yodo', config:'[Kr] 4d10 5s2 5p5', group: 17, period: 5, category: 'reactive-nonmetal', categoryName: 'No metal reactivo' },
+            { number: 54, symbol: 'Xe', name: 'Xenón', config: '[Kr] 4d10 5s2 5p6', group: 18, period: 5, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 55, symbol: 'Cs', name: 'Cesio', config: '[Xe] 6s1', group: 1, period: 6, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 56, symbol: 'Ba', name: 'Bario', config: '[Xe] 6s2', group: 2, period: 6, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 57, symbol: 'La', name: 'Lantano', config: '[Xe] 5d1 6s2', group: 3, period: 6, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 58, symbol: 'Ce', name: 'Cerio', config: '[Xe] 4f1 5d1 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 59, symbol: 'Pr', name: 'Praseodimio', config: '[Xe] 4f3 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 60, symbol: 'Nd', name: 'Neodimio', config: '[Xe] 4f4 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 61, symbol: 'Pm', name: 'Prometio', config: '[Xe] 4f5 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 62, symbol: 'Sm', name: 'Samario', config: '[Xe] 4f6 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 63, symbol: 'Eu', name: 'Europio', config: '[Xe] 4f7 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 64, symbol: 'Gd', name: 'Gadolinio', config: '[Xe] 4f7 5d1 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 65, symbol: 'Tb', name: 'Terbio', config: '[Xe] 4f9 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 66, symbol: 'Dy', name: 'Disprosio', config: '[Xe] 4f10 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 67, symbol: 'Ho', name: 'Holmio', config: '[Xe] 4f11 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 68, symbol: 'Er', name: 'Erbio', config: '[Xe] 4f12 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 69, symbol: 'Tm', name: 'Tulio', config: '[Xe] 4f13 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 70, symbol: 'Yb', name: 'Iterbio', config: '[Xe] 4f14 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 71, symbol: 'Lu', name: 'Lutecio', config: '[Xe] 4f14 5d1 6s2', group: -1, period: 9, category: 'lanthanide', categoryName: 'Lantánido' },
+            { number: 72, symbol: 'Hf', name: 'Hafnio', config: '[Xe] 4f14 5d2 6s2', group: 4, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 73, symbol: 'Ta', name: 'Tántalo', config: '[Xe] 4f14 5d3 6s2', group: 5, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 74, symbol: 'W', name: 'Wolframio', config: '[Xe] 4f14 5d4 6s2', group: 6, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 75, symbol: 'Re', name: 'Renio', config: '[Xe] 4f14 5d5 6s2', group: 7, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 76, symbol: 'Os', name: 'Osmio', config: '[Xe] 4f14 5d6 6s2', group: 8, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 77, symbol: 'Ir', name: 'Iridio', config: '[Xe] 4f14 5d7 6s2', group: 9, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 78, symbol: 'Pt', name: 'Platino', config: '[Xe] 4f14 5d9 6s1', group: 10, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 79, symbol: 'Au', name: 'Oro', config: '[Xe] 4f14 5d10 6s1', group: 11, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 80, symbol: 'Hg', name: 'Mercurio', config: '[Xe] 4f14 5d10 6s2', group: 12, period: 6, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 81, symbol: 'Tl', name: 'Talio', config: '[Xe] 4f14 5d10 6s2 6p1', group: 13, period: 6, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 82, symbol: 'Pb', name: 'Plomo', config: '[Xe] 4f14 5d10 6s2 6p2', group: 14, period: 6, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 83, symbol: 'Bi', name: 'Bismuto', config: '[Xe] 4f14 5d10 6s2 6p3', group: 15, period: 6, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 84, symbol: 'Po', name: 'Polonio', config: '[Xe] 4f14 5d10 6s2 6p4', group: 16, period: 6, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 85, symbol: 'At', name: 'Astato', config: '[Xe] 4f14 5d10 6s2 6p5', group: 17, period: 6, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 86, symbol: 'Rn', name: 'Radón', config: '[Xe] 4f14 5d10 6s2 6p6', group: 18, period: 6, category: 'noble-gas', categoryName: 'Gas noble' },
+            { number: 87, symbol: 'Fr', name: 'Francio', config: '[Rn] 7s1', group: 1, period: 7, category: 'alkali-metal', categoryName: 'Metal alcalino' },
+            { number: 88, symbol: 'Ra', name: 'Radio', config: '[Rn] 7s2', group: 2, period: 7, category: 'alkaline-earth-metal', categoryName: 'Metal alcalinotérreo' },
+            { number: 89, symbol: 'Ac', name: 'Actinio', config: '[Rn] 6d1 7s2', group: 3, period: 7, category: 'actinide', categoryName: 'Actínido' },
+            { number: 90, symbol: 'Th', name: 'Torio', config: '[Rn] 6d2 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 91, symbol: 'Pa', name: 'Protactinio', config: '[Rn] 5f2 6d1 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 92, symbol: 'U', name: 'Uranio', config: '[Rn] 5f3 6d1 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 93, symbol: 'Np', name: 'Neptunio', config: '[Rn] 5f4 6d1 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 94, symbol: 'Pu', name: 'Plutonio', config: '[Rn] 5f6 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 95, symbol: 'Am', name: 'Americio', config: '[Rn] 5f7 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 96, symbol: 'Cm', name: 'Curio', config: '[Rn] 5f7 6d1 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 97, symbol: 'Bk', name: 'Berkelio', config: '[Rn] 5f9 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 98, symbol: 'Cf', name: 'Californio', config: '[Rn] 5f10 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 99, symbol: 'Es', name: 'Einstenio', config: '[Rn] 5f11 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 100, symbol: 'Fm', name: 'Fermio', config: '[Rn] 5f12 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 101, symbol: 'Md', name: 'Mendelevio', config: '[Rn] 5f13 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 102, symbol: 'No', name: 'Nobelio', config: '[Rn] 5f14 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 103, symbol: 'Lr', name: 'Lawrencio', config: '[Rn] 5f14 6d1 7s2', group: -1, period: 10, category: 'actinide', categoryName: 'Actínido' },
+            { number: 104, symbol: 'Rf', name: 'Rutherfordio', config: '[Rn] 5f14 6d2 7s2', group: 4, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 105, symbol: 'Db', name: 'Dubnio', config: '[Rn] 5f14 6d3 7s2', group: 5, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 106, symbol: 'Sg', name: 'Seaborgio', config: '[Rn] 5f14 6d4 7s2', group: 6, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 107, symbol: 'Bh', name: 'Bohrio', config: '[Rn] 5f14 6d5 7s2', group: 7, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 108, symbol: 'Hs', name: 'Hassio', config: '[Rn] 5f14 6d6 7s2', group: 8, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 109, symbol: 'Mt', name: 'Meitnerio', config: '[Rn] 5f14 6d7 7s2', group: 9, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 110, symbol: 'Ds', name: 'Darmstadio', config: '[Rn] 5f14 6d8 7s2', group: 10, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 111, symbol: 'Rg', name: 'Roentgenio', config: '[Rn] 5f14 6d9 7s2', group: 11, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 112, symbol: 'Cn', name: 'Copernicio', config: '[Rn] 5f14 6d10 7s2', group: 12, period: 7, category: 'transition-metal', categoryName: 'Metal de transición' },
+            { number: 113, symbol: 'Nh', name: 'Nihonio', config: '[Rn] 5f14 6d10 7s2 7p1', group: 13, period: 7, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 114, symbol: 'Fl', name: 'Flerovio', config: '[Rn] 5f14 6d10 7s2 7p2', group: 14, period: 7, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 115, symbol: 'Mc', name: 'Moscovio', config: '[Rn] 5f14 6d10 7s2 7p3', group: 15, period: 7, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 116, symbol: 'Lv', name: 'Livermorio', config: '[Rn] 5f14 6d10 7s2 7p4', group: 16, period: 7, category: 'post-transition-metal', categoryName: 'Metal del bloque p' },
+            { number: 117, symbol: 'Ts', name: 'Teneso', config: '[Rn] 5f14 6d10 7s2 7p5', group: 17, period: 7, category: 'metalloid', categoryName: 'Metaloide' },
+            { number: 118, symbol: 'Og', name: 'Oganesón', config: '[Rn] 5f14 6d10 7s2 7p6', group: 18, period: 7, category: 'noble-gas', categoryName: 'Gas noble' },
+        ];
+
+        const periodicTableDiv = document.getElementById('periodic-table');
+        const lanthanidesDiv = document.querySelector('.lanthanide-row');
+        const actinidesDiv = document.querySelector('.actinide-row');
+        const hoverCard = document.getElementById('hover-card');
+        const hoverElementNameDisplay = document.getElementById('hover-element-name');
+        const hoverElementCategoryDisplay = document.getElementById('hover-element-category');
+        const hoverElementSymbolDisplay = document.getElementById('hover-element-symbol');
+        const hoverAtomicNumberDisplay = document.getElementById('hover-atomic-number');
+        const hoverElectronConfigDisplay = document.getElementById('hover-electron-config');
+        const hoverAnimationCanvas = document.getElementById('hover-animation-canvas');
+        const hoverAnimationCtx = hoverAnimationCanvas.getContext('2d');
+
+        const animationSize = 80;
+        hoverAnimationCanvas.width = animationSize;
+        hoverAnimationCanvas.height = animationSize;
+
+        let hoveredElement = null;
+        let animationTimeout;
+
+        function getElementPosition(element) {
+            const group = element.group;
+            const period = element.period;
+
+            if (period >= 1 && period <= 7 && group >= 1 && group <= 18) {
+                let x = group - 1;
+                let y = period - 1;
+                return { x, y };
+            }
+            return { x: -1, y: -1 };
+        }
+
+        function drawPeriodicTable() {
+            periodicTableDiv.innerHTML = '';
+            lanthanidesDiv.innerHTML = '';
+            actinidesDiv.innerHTML = '';
+
+            periodicTableData.forEach(element => {
+                let cell;
+                if (element.number >= 58 && element.number <= 71) { // Lanthanides
+                    cell = document.createElement('div');
+                    cell.classList.add('element-cell', element.category);
+                    cell.innerHTML = `<div class="element-symbol">${element.symbol}</div><div class="text-xs">${element.number}</div>`;
+                    lanthanidesDiv.appendChild(cell);
+                } else if (element.number >= 90 && element.number <= 103) { // Actinides
+                    cell = document.createElement('div');
+                    cell.classList.add('element-cell', element.category);
+                    cell.innerHTML = `<div class="element-symbol">${element.symbol}</div><div class="text-xs">${element.number}</div>`;
+                    actinidesDiv.appendChild(cell);
+                } else {
+                    const pos = getElementPosition(element);
+                    if (pos.x !== -1 && pos.y !== -1) {
+                        cell = document.createElement('div');
+                        cell.classList.add('element-cell', element.category);
+                        cell.style.gridColumnStart = pos.x + 1;
+                        cell.style.gridRowStart = pos.y + 1;
+                        cell.innerHTML = `<div class="element-symbol">${element.symbol}</div><div class="text-xs">${element.number}</div>`;
+                        periodicTableDiv.appendChild(cell);
+                    } else if ((element.number === 57 || element.number === 89)) { // Place La and Ac
+                        const pos = getElementPosition(element);
+                        cell = document.createElement('div');
+                        cell.classList.add('element-cell', element.category);
+                        cell.style.gridColumnStart = 3;
+                        cell.style.gridRowStart = element.period - 1;
+                        cell.innerHTML = `<div class="element-symbol">${element.symbol}</div><div class="text-xs">${element.number}</div>`;
+                        periodicTableDiv.appendChild(cell);
+                    }
+                }
+
+                if (cell) {
+                    cell.addEventListener('mouseenter', (event) => {
+                        showElementInfo(element, event.target);
+                    });
+                    cell.addEventListener('mouseleave', () => {
+                        hoverCard.style.display = 'none';
+                        if (animationTimeout) {
+                            cancelAnimationFrame(animationTimeout);
+                        }
+                    });
+                }
+            });
+
+            // Create empty cells for the gap in the main table
+            const emptyCell6 = document.createElement('div');
+            emptyCell6.style.gridColumnStart = 4;
+            emptyCell6.style.gridColumnEnd = 15;
+            emptyCell6.style.gridRowStart = 6;
+            periodicTableDiv.appendChild(emptyCell6);
+
+            const emptyCell7 = document.createElement('div');
+            emptyCell7.style.gridColumnStart = 4;
+            emptyCell7.style.gridColumnEnd = 15;
+            emptyCell7.style.gridRowStart = 7;
+            periodicTableDiv.appendChild(emptyCell7);
+        }
+
+        function showElementInfo(element, elementCell) {
+            hoveredElement = element;
+            hoverElementNameDisplay.textContent = element.name;
+            hoverElementCategoryDisplay.textContent = `Categoría: ${element.categoryName}`;
+            hoverElementSymbolDisplay.textContent = `Símbolo: ${element.symbol}`;
+            hoverAtomicNumberDisplay.textContent = `Número Atómico: ${element.number}`;
+            hoverElectronConfigDisplay.textContent = `Configuración Electrónica: ${element.config}`;
+
+            // Position the hover card
+            const rect = elementCell.getBoundingClientRect();
+            const containerRect = document.getElementById('periodic-table-container').getBoundingClientRect();
+            const hoverCardWidth = hoverCard.offsetWidth;
+
+            let top = rect.bottom - containerRect.top + window.scrollY + 5;
+            let left = rect.left - containerRect.left + rect.width / 2 - hoverCardWidth / 2;
+
+             // Adjust for boundaries
+            if (left < 0) {
+                left = 10;
+            } else if (left + hoverCardWidth > containerRect.width) {
+                left = containerRect.width - hoverCardWidth - 10;
+            }
+
+            hoverCard.style.top = `${top}px`;
+            hoverCard.style.left = `${left}px`;
+            hoverCard.style.display = 'block';
+            startElectronAnimation(element.config);
+        }
+
+        function parseElectronConfig(config) {
+            const shells = {};
+            const parts = config.split(' ');
+            parts.forEach(part => {
+                const match = part.match(/(\d)([spdf])(\d+)/);
+                if (match) {
+                    const shellNumber = parseInt(match[1]);
+                    const electrons = parseInt(match[3]);
+                    shells[shellNumber] = (shells[shellNumber] || 0) + electrons;
+                }
+            });
+            return shells;
+        }
+
+        function startElectronAnimation(config) {
+            const shells = parseElectronConfig(config);
+            let angles = {};
+            for (const shell in shells) {
+                angles[shell] = Array(shells[shell]).fill(0).map(() => Math.random() * 2 * Math.PI);
+            }
+
+            function animate() {
+                hoverAnimationCtx.clearRect(0, 0, hoverAnimationCanvas.width, hoverAnimationCanvas.height);
+                const centerX = hoverAnimationCanvas.width / 2;
+                const centerY = hoverAnimationCanvas.height / 2;
+                const nucleusRadius = 6;
+                hoverAnimationCtx.beginPath();
+                hoverAnimationCtx.arc(centerX, centerY, nucleusRadius, 0, 2 * Math.PI);
+                hoverAnimationCtx.fillStyle = '#f7fafc';
+                hoverAnimationCtx.fill();
+
+                let maxShell = Math.max(...Object.keys(shells).map(Number));
+                for (let shellNum = 1; shellNum <= maxShell; shellNum++) {
+                    const numElectrons = shells[shellNum] || 0;
+                    const shellRadius = nucleusRadius + shellNum * 8;
+                    for (let i =0; i < numElectrons; i++) {
+                        angles[shellNum] = angles[shellNum] || Array(numElectrons).fill(0).map(() => Math.random() * 2 * Math.PI);
+                        const angle = angles[shellNum][i];
+                        const x = centerX + shellRadius * Math.cos(angle + Date.now() * 0.001 * shellNum);
+                        const y = centerY + shellRadius * Math.sin(angle + Date.now() * 0.001 * shellNum);
+                        hoverAnimationCtx.beginPath();
+                        hoverAnimationCtx.arc(x, y, 2, 0, 2 * Math.PI);
+                        hoverAnimationCtx.fillStyle = '#a0aec0';
+                        hoverAnimationCtx.fill();
+                    }
+                }
+
+                animationTimeout = requestAnimationFrame(animate);
+            }
+
+            if (animationTimeout) {
+                cancelAnimationFrame(animationTimeout);
+            }
+            animate();
+        }
+
+        drawPeriodicTable();
+    </script>
+</body>
+</html>
+
