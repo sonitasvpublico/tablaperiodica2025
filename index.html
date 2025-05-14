@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabla Periódica Interactiva - SonitaSV 2025</title>
+    <title>Tabla Periódica Interactiva - SonitaSV Abril 2025🔥 </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css"/>
     <script src="https://unpkg.com/@tailwindcss/browser@latest"></script>
@@ -12,6 +12,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="tienda-sonita.svg">
     <style>
+        #logo {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 100;
+     }
+
+     #logo img {
+        height: 40px; /* Puedes ajustar el tamaño */
+     }
+        
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -162,6 +173,9 @@
     </style>
 </head>
 <body class="bg-gray-800 p-4">
+    <div id="logo">
+        <img src="tienda-sonita.svg" alt="Logo" />
+    </div>
     <div id="periodic-table-container" class="rounded-lg shadow-md">
         <h1 class="text-2xl font-semibold mb-4 text-center text-gray-300">Periódica Interactiva - SonitaSV 2025</h1>
         <div id="periodic-table">
